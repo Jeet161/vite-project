@@ -11,7 +11,7 @@ import QuestionBank      from "./QuestionBank";
 import MarkAttendance    from "./MarkAttendance";
 import ClassReports      from "./ClassReports";
 
-import "./teacher.css";
+
 
 const NAV = [
   { path: "/teacher",             label: "Dashboard",    icon: "🏠" },

@@ -11,8 +11,7 @@ import SubjectSetup     from "./SubjectSetup";
 import GradingPolicies  from "./GradingPolicies";
 import SystemHealth     from "./SystemHealth";
 
-// Admin-only CSS
-import "./admin.css";
+
 
 const NAV_ITEMS = [
   { path: "/admin",             label: "Dashboard",    icon: "⬡" },

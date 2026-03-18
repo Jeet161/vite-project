@@ -10,7 +10,7 @@ import MyMarks       from "./MyMarks";
 import MyAttendance  from "./MyAttendance";
 import MyProfile     from "./MyProfile";
 
-import "./student.css";
+
 
 const NAV = [
   { path: "/student",             label: "Dashboard",   icon: "🏠" },
