@@ -14,6 +14,10 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 
+/* ✅ ADD THIS */
+import attendanceRoutes from "./routes/attendanceRoutes.js";
+import { startAttendanceCronJob } from "./jobs/attendanceAlertJob.js";
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -28,7 +32,6 @@ const ALLOWED_ORIGINS = [
 app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (curl, Postman, etc.)
     if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
@@ -41,9 +44,15 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 
+/* ✅ ADD THIS */
+app.use("/api/attendance", attendanceRoutes);
+
 // Error handler
 app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+
+  /* ✅ START CRON JOB */
+  startAttendanceCronJob();
 });
