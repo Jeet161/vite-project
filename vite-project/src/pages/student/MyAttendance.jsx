@@ -1,90 +1,190 @@
-const ATTENDANCE = [
-  { subject: "Data Structures",   code: "CS301", conducted: 40, attended: 36, pct: 90 },
-  { subject: "Operating Systems", code: "CS401", conducted: 38, attended: 30, pct: 79 },
-  { subject: "DBMS",              code: "CS402", conducted: 35, attended: 29, pct: 83 },
-  { subject: "Maths III",         code: "MA301", conducted: 42, attended: 32, pct: 76 },
-  { subject: "Physics Lab",       code: "PH201", conducted: 20, attended: 19, pct: 95 },
-];
+import { useState, useEffect, useRef } from "react";
+import { markAttendance, getMyAttendance } from "../../services/attendanceService.js";
 
-const overall = Math.round(
-  ATTENDANCE.reduce((s, a) => s + a.pct, 0) / ATTENDANCE.length
-);
+const MyAttendance = () => {
+  const [data,       setData]       = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [code,       setCode]       = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [message,    setMessage]    = useState(null); // { type: "success"|"error", text }
 
-const getColor = (pct) => {
-  if (pct >= 85) return { bar: "green",  text: "#16a34a", bg: "#dcfce7", label: "Good" };
-  if (pct >= 75) return { bar: "amber",  text: "#d97706", bg: "#fef3c7", label: "Low" };
-  return               { bar: "red",    text: "#dc2626", bg: "#fee2e2", label: "Critical" };
-};
+  // Fetch attendance on mount
+  useEffect(() => {
+    fetchAttendance();
+  }, []);
 
-const MyAttendance = () => (
-  <div>
-    <h1 className="stu-page-title">My Attendance</h1>
-    <p className="stu-page-sub">Track your attendance across all subjects.</p>
+  const fetchAttendance = async () => {
+    try {
+      const res = await getMyAttendance();
+      setData(res.data);
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    {/* Overall */}
-    <div style={{
-      background: overall >= 85 ? "linear-gradient(135deg, #16a34a, #4ade80)"
-                : overall >= 75 ? "linear-gradient(135deg, #d97706, #fbbf24)"
-                :                 "linear-gradient(135deg, #dc2626, #f87171)",
-      borderRadius: 16, padding: "24px 28px", marginBottom: 24,
-      color: "#fff", display: "flex", alignItems: "center", gap: 20,
-    }}>
+  const handleMark = async () => {
+    if (!code.trim()) return;
+    setSubmitting(true);
+    setMessage(null);
+    try {
+      await markAttendance(code.trim());
+      setMessage({ type: "success", text: "✅ Attendance marked successfully!" });
+      setCode("");
+      fetchAttendance(); // refresh table
+    } catch (err) {
+      setMessage({ type: "error", text: err.response?.data?.message ?? "Failed to mark attendance" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getStatusClass = (status) =>
+    status === "PRESENT" ? "stu-badge active" : "stu-badge missed";
+
+  const getProgressColor = (pct) => {
+    if (pct >= 75) return "green";
+    if (pct >= 50) return "amber";
+    return "red";
+  };
+
+  if (loading) {
+    return (
       <div>
-        <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 4 }}>Overall Attendance</div>
-        <div style={{ fontSize: 52, fontWeight: 700, lineHeight: 1 }}>{overall}%</div>
-        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
-          {overall >= 85 ? "✅ You're on track" : overall >= 75 ? "⚠️ Attendance is low" : "🚨 Critical — attend classes"}
+        <h1 className="stu-page-title">Attendance</h1>
+        <p className="stu-page-sub">Track your daily attendance.</p>
+        <div style={{ color: "var(--muted)", fontSize: 14, marginTop: 40, textAlign: "center" }}>
+          Loading attendance…
         </div>
       </div>
-      <div style={{ marginLeft: "auto", textAlign: "right" }}>
-        <div style={{ fontSize: 13, opacity: 0.85 }}>Min Required</div>
-        <div style={{ fontSize: 28, fontWeight: 700 }}>75%</div>
+    );
+  }
+
+  const pct   = data?.percentage ?? 0;
+  const color = getProgressColor(pct);
+
+  return (
+    <div>
+      <h1 className="stu-page-title">Attendance</h1>
+      <p className="stu-page-sub">Mark your attendance and track your record.</p>
+
+      {/* ── Summary Stats ── */}
+      <div className="stu-stats" style={{ marginBottom: 24 }}>
+        {[
+          ["Total Classes", data?.total ?? 0,   "blue",   "📅"],
+          ["Present",       data?.present ?? 0, "green",  "✅"],
+          ["Absent",        data?.absent ?? 0,  "purple", "❌"],
+          ["Attendance %",  `${pct}%`,          color,    "📊"],
+        ].map(([label, value, cls, icon]) => (
+          <div className="stu-stat-card" key={label}>
+            <div className={`stu-stat-icon ${cls}`}>{icon}</div>
+            <div className="stu-stat-value">{value}</div>
+            <div className="stu-stat-label">{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Progress Bar ── */}
+      <div className="stu-panel" style={{ marginBottom: 24 }}>
+        <div className="stu-panel-body">
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Overall Attendance</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: pct >= 75 ? "var(--green)" : pct >= 50 ? "var(--amber)" : "var(--red)" }}>
+              {pct}%
+            </span>
+          </div>
+          <div className="stu-progress-bar">
+            <div className={`stu-progress-fill ${color}`} style={{ width: `${pct}%` }} />
+          </div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
+            {pct >= 75
+              ? "✅ You meet the minimum 75% requirement"
+              : `⚠️ You need ${75 - pct}% more to meet the requirement`}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Mark Attendance ── */}
+      <div className="stu-panel" style={{ marginBottom: 24 }}>
+        <div className="stu-panel-header">
+          <span className="stu-panel-title">Mark Today's Attendance</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>Code valid for 3 minutes</span>
+        </div>
+        <div className="stu-panel-body">
+          {message && (
+            <div style={{
+              background: message.type === "success" ? "rgba(52,211,153,0.08)" : "rgba(248,113,113,0.08)",
+              border: `1px solid ${message.type === "success" ? "rgba(52,211,153,0.25)" : "rgba(248,113,113,0.25)"}`,
+              borderRadius: 8, padding: "10px 14px", fontSize: 13,
+              color: message.type === "success" ? "var(--green)" : "var(--red)",
+              marginBottom: 16,
+            }}>
+              {message.text}
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <input
+              className="stu-input"
+              type="text"
+              placeholder="Enter 6-character code (e.g. AB3X7K)"
+              value={code}
+              maxLength={6}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              style={{ flex: 1, letterSpacing: "0.15em", fontFamily: "DM Mono, monospace", fontSize: 16, fontWeight: 600 }}
+            />
+            <button
+              className="stu-btn primary"
+              onClick={handleMark}
+              disabled={submitting || code.length !== 6}
+              style={{ whiteSpace: "nowrap", padding: "10px 24px" }}
+            >
+              {submitting ? "Marking…" : "Mark Present"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Attendance History ── */}
+      <div className="stu-panel">
+        <div className="stu-panel-header">
+          <span className="stu-panel-title">Attendance History</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>{data?.total ?? 0} records</span>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          {!data?.records?.length ? (
+            <div style={{ padding: 24, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
+              No attendance records yet.
+            </div>
+          ) : (
+            <table className="stu-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Date</th>
+                  <th>Department</th>
+                  <th>Marked By</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.records.map((record, i) => (
+                  <tr key={record.id}>
+                    <td style={{ color: "var(--muted)" }}>{i + 1}</td>
+                    <td>{new Date(record.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
+                    <td>{record.session?.department ?? "—"}</td>
+                    <td>{record.session?.teacher?.name ?? "—"}</td>
+                    <td><span className={getStatusClass(record.status)}>{record.status}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
-
-    <div className="stu-panel">
-      <table className="stu-table">
-        <thead>
-          <tr>
-            <th>Subject</th><th>Code</th><th>Conducted</th>
-            <th>Attended</th><th>Attendance</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ATTENDANCE.map((a, i) => {
-            const c = getColor(a.pct);
-            return (
-              <tr key={i}>
-                <td style={{ fontWeight: 500 }}>{a.subject}</td>
-                <td style={{ fontFamily: "monospace", fontSize: 12, color: "var(--stu-accent)" }}>{a.code}</td>
-                <td>{a.conducted}</td>
-                <td>{a.attended}</td>
-                <td>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontWeight: 600, minWidth: 36 }}>{a.pct}%</span>
-                    <div style={{ flex: 1, maxWidth: 100 }}>
-                      <div className="stu-progress-bar">
-                        <div className={`stu-progress-fill ${c.bar}`} style={{ width: `${a.pct}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, padding: "3px 9px",
-                    borderRadius: 6, background: c.bg, color: c.text,
-                    textTransform: "uppercase", letterSpacing: "0.04em",
-                  }}>
-                    {c.label}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  </div>
-);
+  );
+};
 
 export default MyAttendance;
