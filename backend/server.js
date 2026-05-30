@@ -19,23 +19,10 @@ import userRoutes from "./routes/userRoutes.js";
 /* ✅ ADD THIS */
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import { startAttendanceCronJob } from "./jobs/attendanceAlertJob.js";
+import assignmentRoutes from "./routes/assignmentRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-const [
-  { default: authRoutes },
-  { default: adminRoutes },
-  { default: userRoutes },
-  { default: attendanceRoutes },
-  { startAttendanceCronJob },
-] = await Promise.all([
-  import("./routes/authRoutes.js"),
-  import("./routes/adminRoutes.js"),
-  import("./routes/userRoutes.js"),
-  import("./routes/attendanceRoutes.js"),
-  import("./jobs/attendanceAlertJob.js"),
-]);
 
 // Allow both Vite dev ports (5173 and 5174)
 const ALLOWED_ORIGINS = [
@@ -67,7 +54,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
 
 /* ✅ ADD THIS */
-app.use("/api/attendance", attendanceRoutes);
+app.use("/api/attendance",  attendanceRoutes);
 app.use("/api/assignments", assignmentRoutes);
 
 // Error handler
