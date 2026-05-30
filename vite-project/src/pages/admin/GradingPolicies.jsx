@@ -1,23 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import api from "../../services/api";
 
 const DEFAULT_GRADES = [
-  { grade: "O",  label: "Outstanding", min: 90, max: 100, points: 10 },
-  { grade: "A+", label: "Excellent",   min: 80, max: 89,  points: 9  },
-  { grade: "A",  label: "Very Good",   min: 70, max: 79,  points: 8  },
-  { grade: "B+", label: "Good",        min: 60, max: 69,  points: 7  },
-  { grade: "B",  label: "Above Avg",   min: 50, max: 59,  points: 6  },
-  { grade: "C",  label: "Average",     min: 40, max: 49,  points: 5  },
-  { grade: "D",  label: "Pass",        min: 35, max: 39,  points: 4  },
-  { grade: "F",  label: "Fail",        min: 0,  max: 34,  points: 0  },
+  { grade: "O",  label: "Outstanding", minScore: 90, maxScore: 100, gradePoints: 10 },
+  { grade: "A+", label: "Excellent",   minScore: 80, maxScore: 89,  gradePoints: 9  },
+  { grade: "A",  label: "Very Good",   minScore: 70, maxScore: 79,  gradePoints: 8  },
+  { grade: "B+", label: "Good",        minScore: 60, maxScore: 69,  gradePoints: 7  },
+  { grade: "B",  label: "Above Avg",   minScore: 50, maxScore: 59,  gradePoints: 6  },
+  { grade: "C",  label: "Average",     minScore: 40, maxScore: 49,  gradePoints: 5  },
+  { grade: "D",  label: "Pass",        minScore: 35, maxScore: 39,  gradePoints: 4  },
+  { grade: "F",  label: "Fail",        minScore: 0,  maxScore: 34,  gradePoints: 0  },
 ];
 
 const GradingPolicies = () => {
-  const [grades, setGrades] = useState(DEFAULT_GRADES);
+  const [grades, setGrades] = useState([]);
   const [saved,  setSaved]  = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState("");
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 4000);
+  };
+
+  const fetchPolicies = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/admin/grading");
+      if (res.data.policies && res.data.policies.length > 0) {
+        setGrades(res.data.policies);
+      } else {
+        // Fallback to default if nothing in DB
+        setGrades(DEFAULT_GRADES);
+      }
+    } catch (err) {
+      showToast("❌ Failed to load grading policies");
+      setGrades(DEFAULT_GRADES);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchPolicies(); }, [fetchPolicies]);
+
+  const handleSave = async () => {
+    try {
+      await api.put("/admin/grading", { policies: grades });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      showToast("❌ Failed to save policies");
+    }
   };
 
   return (
@@ -32,18 +65,29 @@ const GradingPolicies = () => {
         </button>
       </div>
 
+      {toast && (
+        <div style={{
+          background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 10, padding: "12px 20px", marginBottom: 20, fontSize: 14, color: "#e2e8f0",
+        }}>
+          {toast}
+        </div>
+      )}
+
       <div className="adm-panel">
         <table className="adm-table">
           <thead>
             <tr><th>Grade</th><th>Label</th><th>Min Marks</th><th>Max Marks</th><th>Grade Points</th></tr>
           </thead>
           <tbody>
-            {grades.map((g, i) => (
+            {loading ? (
+              <tr><td colSpan="5" style={{ textAlign: "center", padding: 20 }}>Loading...</td></tr>
+            ) : grades.map((g, i) => (
               <tr key={i}>
                 <td>
                   <span style={{
                     fontFamily: "monospace", fontWeight: 700, fontSize: 15,
-                    color: g.grade === "F" ? "var(--adm-red)" : g.points >= 9 ? "var(--adm-green)" : "var(--adm-accent2)"
+                    color: g.grade === "F" ? "var(--adm-red)" : (g.gradePoints || g.points) >= 9 ? "var(--adm-green)" : "var(--adm-accent2)"
                   }}>
                     {g.grade}
                   </span>
@@ -51,18 +95,18 @@ const GradingPolicies = () => {
                 <td>{g.label}</td>
                 <td>
                   <input className="adm-input" style={{ maxWidth: 80 }} type="number"
-                    value={g.min}
-                    onChange={(e) => setGrades((p) => p.map((x, idx) => idx === i ? { ...x, min: Number(e.target.value) } : x))} />
+                    value={g.minScore ?? g.min ?? 0}
+                    onChange={(e) => setGrades((p) => p.map((x, idx) => idx === i ? { ...x, minScore: Number(e.target.value) } : x))} />
                 </td>
                 <td>
                   <input className="adm-input" style={{ maxWidth: 80 }} type="number"
-                    value={g.max}
-                    onChange={(e) => setGrades((p) => p.map((x, idx) => idx === i ? { ...x, max: Number(e.target.value) } : x))} />
+                    value={g.maxScore ?? g.max ?? 0}
+                    onChange={(e) => setGrades((p) => p.map((x, idx) => idx === i ? { ...x, maxScore: Number(e.target.value) } : x))} />
                 </td>
                 <td>
                   <input className="adm-input" style={{ maxWidth: 80 }} type="number"
-                    value={g.points}
-                    onChange={(e) => setGrades((p) => p.map((x, idx) => idx === i ? { ...x, points: Number(e.target.value) } : x))} />
+                    value={g.gradePoints ?? g.points ?? 0}
+                    onChange={(e) => setGrades((p) => p.map((x, idx) => idx === i ? { ...x, gradePoints: Number(e.target.value) } : x))} />
                 </td>
               </tr>
             ))}

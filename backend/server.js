@@ -1,6 +1,7 @@
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import dotenv from "dotenv";
+import { existsSync, mkdirSync } from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,6 +19,7 @@ import userRoutes from "./routes/userRoutes.js";
 /* ✅ ADD THIS */
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import { startAttendanceCronJob } from "./jobs/attendanceAlertJob.js";
+import assignmentRoutes from "./routes/assignmentRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -41,13 +43,19 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// Serve uploaded assignment files statically
+const uploadsDir = join(__dirname, "uploads");
+if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
+app.use("/uploads", express.static(uploadsDir));
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
 
 /* ✅ ADD THIS */
-app.use("/api/attendance", attendanceRoutes);
+app.use("/api/attendance",  attendanceRoutes);
+app.use("/api/assignments", assignmentRoutes);
 
 // Error handler
 app.use(errorHandler);

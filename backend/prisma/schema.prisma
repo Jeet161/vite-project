@@ -45,8 +45,10 @@ model User {
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
-  teacherSessions  AttendanceSession[] @relation("TeacherSessions")
-  attendanceRecord Attendance[]        @relation("StudentAttendance")
+  teacherSessions      AttendanceSession[] @relation("TeacherSessions")
+  attendanceRecord     Attendance[]        @relation("StudentAttendance")
+  createdAssignments   Assignment[]        @relation("TeacherAssignments")
+  submissions          Submission[]        @relation("StudentSubmissions")
 }
 
 enum AttendanceStatus {
@@ -59,12 +61,15 @@ model AttendanceSession {
   code       String     @unique
   teacherId  Int
   department Department
+  classSlot  Int        // 1–5 (which of the 5 daily classes)
   date       DateTime
   expiresAt  DateTime
   createdAt  DateTime   @default(now())
 
   teacher    User       @relation("TeacherSessions", fields: [teacherId], references: [id])
   records    Attendance[]
+
+  @@unique([department, date, classSlot]) // one session per slot per dept per day
 }
 
 model Attendance {
@@ -78,5 +83,70 @@ model Attendance {
   student    User             @relation("StudentAttendance", fields: [studentId], references: [id])
   session    AttendanceSession @relation(fields: [sessionId], references: [id])
 
-  @@unique([studentId, date])
+  @@unique([studentId, sessionId]) // one record per student per class session
+}
+
+// ── Assignment Module ─────────────────────────────────────────────────────────
+
+enum AssignmentStatus {
+  ACTIVE
+  CLOSED
+}
+
+model Assignment {
+  id          Int              @id @default(autoincrement())
+  title       String
+  description String?
+  subjectCode String?
+  fileUrl     String?          // optional file attached by teacher
+  dueDate     DateTime
+  department  Department
+  status      AssignmentStatus @default(ACTIVE)
+  maxScore    Int              @default(100)
+  teacherId   Int
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  teacher     User             @relation("TeacherAssignments", fields: [teacherId], references: [id])
+  submissions Submission[]
+}
+
+model Submission {
+  id           Int      @id @default(autoincrement())
+  fileUrl      String?  // file uploaded by student
+  score        Int?     // optional subjective score given by teacher
+  feedback     String?  // optional teacher feedback
+  submittedAt  DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignmentId Int
+  studentId    Int
+
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      User       @relation("StudentSubmissions", fields: [studentId], references: [id])
+
+  @@unique([studentId, assignmentId]) // one submission per student per assignment
+}
+
+// ── Admin Academic Configuration ──────────────────────────────────────────────
+
+model Subject {
+  id         Int        @id @default(autoincrement())
+  name       String
+  code       String     @unique
+  department Department
+  semester   Int
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model GradingPolicy {
+  id         Int      @id @default(autoincrement())
+  grade      String   @unique
+  label      String
+  minScore   Int
+  maxScore   Int
+  gradePoints Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

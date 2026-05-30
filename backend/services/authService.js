@@ -44,12 +44,21 @@ export const approveUser = async (userId) => {
   if (!user) throw new Error("User not found");
   if (user.status === "APPROVED") throw new Error("User already approved");
 
-  // Count existing users of same role to generate unique ID
-  const count = await prisma.user.count({
-    where: { role: user.role, status: "APPROVED" },
-  });
+  // ✅ Keep generating until we find a truly unique ID
+  let uniqueId;
+  let attempts = 0;
+  while (true) {
+    const count = await prisma.user.count({ where: { role: user.role } });
+    const candidate = generateUniqueId(user.role, count + 1 + attempts);
+    const exists = await prisma.user.findUnique({ where: { uniqueId: candidate } });
+    if (!exists) {
+      uniqueId = candidate;
+      break;
+    }
+    attempts++;
+    if (attempts > 100) throw new Error("Could not generate a unique ID, too many attempts");
+  }
 
-  const uniqueId = generateUniqueId(user.role, count + 1);
   const tempPassword = Math.random().toString(36).slice(-8);
   const hashedPassword = await hashPassword(tempPassword);
 
@@ -62,7 +71,6 @@ export const approveUser = async (userId) => {
     },
   });
 
-  // Send email with credentials
   await sendApprovalEmail(user.email, uniqueId, tempPassword);
 
   return updatedUser;

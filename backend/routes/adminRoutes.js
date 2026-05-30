@@ -5,6 +5,13 @@ import {
   rejectRequest,
   getUsers,
 } from "../controllers/adminController.js";
+import {
+  getSubjects,
+  createSubject,
+  deleteSubject,
+  getGradingPolicies,
+  updateGradingPolicies
+} from "../controllers/academicController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { restrictTo } from "../middleware/roleMiddleware.js";
 
@@ -17,5 +24,13 @@ router.get("/requests", getRequests);
 router.post("/requests/:id/approve", approveRequest);
 router.post("/requests/:id/reject", rejectRequest);
 router.get("/users", getUsers);
+
+// Academic Configuration
+router.get("/subjects", getSubjects);
+router.post("/subjects", createSubject);
+router.delete("/subjects/:id", deleteSubject);
+
+router.get("/grading", getGradingPolicies);
+router.put("/grading", updateGradingPolicies);
 
 export default router;

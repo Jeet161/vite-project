@@ -11,8 +11,10 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Don't call /auth/me on public pages
-    const isPublic = PUBLIC_PATHS.includes(window.location.pathname);
-    
+    const isPublic = PUBLIC_PATHS.some(path =>
+      window.location.pathname.startsWith(path)
+    );
+
     if (isPublic) {
       setLoading(false);
       return;
@@ -23,6 +25,7 @@ export const AuthProvider = ({ children }) => {
         const res = await getCurrentUser();
         setUser(res.data.user);
       } catch {
+        // Session restore failed → clear user, let ProtectedRoute redirect
         setUser(null);
       } finally {
         setLoading(false);
@@ -43,6 +46,7 @@ export const AuthProvider = ({ children }) => {
       // even if it fails, clear user
     } finally {
       setUser(null);
+      window.location.href = "/login";
     }
   }, []);
 

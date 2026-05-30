@@ -35,9 +35,9 @@ const IDGeneration = () => {
       // 3. Creates User
       // 4. Sends the Email
       const res = await api.post(`/admin/requests/${id}/approve`);
-      
+
       showToast(`✅ Success! Credentials generated and emailed to ${name} (${email}).`);
-      
+
       // Remove from list
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
@@ -71,7 +71,7 @@ const IDGeneration = () => {
             {loading ? "Refreshing..." : "🔄 Refresh"}
           </button>
         </div>
-        
+
         <div className="adm-panel-body" style={{ padding: 0 }}>
           {loading && requests.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--adm-muted)", fontSize: 14 }}>
@@ -99,7 +99,7 @@ const IDGeneration = () => {
                 {/* User info */}
                 <div style={{ display: "flex", gap: 16, alignItems: "center", flex: 1, minWidth: 250 }}>
                   <div className={`adm-user-row-avatar ${u.role === "STUDENT" ? "s" : "t"}`}
-                       style={{ width: 42, height: 42, borderRadius: 10, fontSize: 15 }}>
+                    style={{ width: 42, height: 42, borderRadius: 10, fontSize: 15 }}>
                     {(u.fullName || "?")[0]}
                   </div>
                   <div>
